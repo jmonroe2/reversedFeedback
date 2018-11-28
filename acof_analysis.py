@@ -18,6 +18,7 @@ def main():
         evaluate scores
         select on scores
         calculate probabilities
+        profit!!!
     '''
     #data_dir = r"C:\Data\Spring2018\reversed_feedback\data_version3\part1\\"
     data_dir = "./data/"
@@ -141,7 +142,7 @@ def correlate_tomography(to_bin, tomographic, threshold, bin_min=None, bin_max=N
                 tomo[bin_index] += np.sign(threshold - readout )
         ##END loop through points belonging to bin
         N = hist_values[bin_index]
-        tomo[bin_index] /= N
+        #tomo[bin_index] /= N
         ## calculate 95% CI for binomial error
         p = 0.5*tomo[bin_index] + 0.5 # convert from expectation value to probability
         tomo_err[bin_index] = 1.96 *np.sqrt(p*(1-p)/N) /2
