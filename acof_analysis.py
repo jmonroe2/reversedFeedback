@@ -8,6 +8,7 @@ Created on Mon Sep 24 12:07:17 2018
 import numpy as np
 import matplotlib.pyplot as plt
 
+
 def main():
     '''
     OUTLINE:
@@ -18,13 +19,17 @@ def main():
         select on scores
         calculate probabilities
     '''
-    data_dir = r"C:\Data\Spring2018\reversed_feedback\data_version3\part1\\"
+    #data_dir = r"C:\Data\Spring2018\reversed_feedback\data_version3\part1\\"
+    data_dir = "./data/"
     data_file = "fullData_26Rot_-0.45,0.35Amp_5420Start_145nsInteg_f1.5_xyzTomo_p1"
     
     weak_measurement, strong_measurement = np.loadtxt(data_dir+data_file)
-    
-    weak_measurement -= np.mean(weak_measurement)
-    strong_measurement -= np.mean(strong_measurement)
+    weak_mean = np.mean(weak_measurement)
+    strong_mean = np.mean(strong_measurement)
+    print(f"Subtracting {strong_mean} and {weak_mean} from strong and weak\
+          signals respectively")
+    weak_measurement -= weak_mean
+    strong_measurement -= strong_mean
     
     ''' Check input
     fig, ax1 = plt.subplots()
@@ -33,11 +38,10 @@ def main():
     ax2.plot(strong_measurement, ",")
     
     plt.show()
-    '''
+    #'''
+    
     ## select zero angle rotation and check readout tomography
-    print("start")    
     check_corrTomo(weak_measurement, strong_measurement)
-    print("End")
 ##END main()
     
     
@@ -77,9 +81,11 @@ def check_corrTomo(weak, strong):
     x,z = theory_curves(coord)
     
     #plt.plot(all_tomo_dict["x"], all_tomo_dict["z"], 'ok')
-    plt.plot(coord, tomo)
+    plt.errorbar(coord, tomo, yerr=tomo_err)
     plt.plot(coord, z, label='Theory')
     plt.legend(loc=2)
+    plt.xlabel("Meausurement record, $r$")
+    plt.ylabel("Tomographic outcome")
     plt.show()
     
     return all_tomo_dict, all_tomoErr_dict
@@ -95,13 +101,32 @@ def correlate_tomography(to_bin, tomographic, threshold, bin_min=None, bin_max=N
     '''
     
     ## bin the array to be binned
+    # set of the bin range (if provided)
     if (bin_min is not None) and (bin_max is not None):
         bins = np.linspace(bin_min, bin_max, num_bins)
     else:
         bins = num_bins
+    # histogram
     hist_values, bin_edges = np.histogram(to_bin, bins=bins)
     bin_xs = bin_edges[1:] # skip the left-most bin
     
+    ## in each bin, get the bin's tomographic outcome and average sign.
+    tomo, tomo_err = np.zeros((2,num_bins))
+    for bin_index in range(1,len(bin_xs)):
+        left_bound  = bin_xs[bin_index-1]
+        right_bound = bin_xs[bin_index]
+        
+        tomo_inBin = tomographic[(left_bound < to_bin) & (to_bin<right_bound)]
+        tomo[bin_index] = np.mean( np.sign(threshold-tomo_inBin))
+        
+        # calculate error
+        p = 0.5*tomo[bin_index] + 0.5 # convert from expectation value to probability
+        N = hist_values[bin_index]
+        #match_indices = np.where( left_bound < to_bin < right_bound)
+        tomo_err[bin_index] = 1.96 *np.sqrt(p*(1-p)/N) /2
+        tomo_err[bin_index] *= 2 # convert back to expectation values.
+    
+    '''
     ## calculate average outcome for tomography in each bin
     tomo = np.zeros(num_bins)
     tomo_err = np.zeros(num_bins)
@@ -110,19 +135,10 @@ def correlate_tomography(to_bin, tomographic, threshold, bin_min=None, bin_max=N
     #point = sorted_toBin[0]
     readout = tomo[0]  
     for bin_index, bin_thresh in enumerate(bin_xs):
-        '''
-        while (point < bin_thresh):
-            tomo[bin_index] += np.sign( readout - threshold)
-            data_index +=1
-            point = sorted_toBin[data_index]
-            readout = tomographic[data_index]
-        '''
         for data_index, datum in enumerate(to_bin):
             if bin_xs[bin_index-1] < datum < bin_thresh:
                 readout = tomographic[data_index]
                 tomo[bin_index] += np.sign(threshold - readout )
-
-            
         ##END loop through points belonging to bin
         N = hist_values[bin_index]
         tomo[bin_index] /= N
@@ -131,6 +147,7 @@ def correlate_tomography(to_bin, tomographic, threshold, bin_min=None, bin_max=N
         tomo_err[bin_index] = 1.96 *np.sqrt(p*(1-p)/N) /2
         tomo_err[bin_index] *= 2 # convert back to expectation values.
     ##END loop through bins
+    '''
     
     ## output
     return bin_xs, tomo, tomo_err
