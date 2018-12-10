@@ -1,0 +1,145 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Mon Sep 24 12:07:17 2018
+
+@author: J. Monroe
+
+"""
+import numpy as np
+import matplotlib.pyplot as plt
+import sys, os
+sys.path.append(os.getcwd())
+import util
+import tests 
+
+global num_rotations
+num_rotations=27
+
+def main():
+    '''
+    OUTLINE:
+        load data
+        correlate tomography
+        make theory curves
+        evaluate scores
+        select on scores
+        calculate probabilities
+        profit!!!
+    '''
+    ## load data
+    data_dir = "../data/"
+    use_plusX_initial = True
+    if use_plusX_initial:
+        data_file = "fullData_26Rot_-0.45,0.35Amp_5420Start_145nsInteg_f1.5_xyzTomo_p1"
+        z0 = 0.
+    else:
+        data_file = "fullData_prepZ,0.5_26Rot_-0.45,0.35Amp_5420Start_145nsInteg_f1.5_xyzTomo_p1"
+        z0=1./np.sqrt(2)
+    weak_measurement, strong_measurement = np.loadtxt(data_dir+data_file)
+
+    ## clean data
+    #   trim to even number of trajectories per rotation
+    #   calculate tomographic outcomes
+    weak, strong = clean_data(weak_measurement,strong_measurement)
+    #tests.find_readout_threshold(weak, strong) ## for checking above
+    readout_threshold = -1  ## from above
+    tomo = measurement_to_tomo(strong, readout_threshold)
+    
+    ## select zero angle rotation and check readout tomography
+    tests.check_corrTomo(weak, tomo, z0)
+    return 0;
+
+    ## evaluate feedback
+    scores = get_scores(weak)
+    #tests.check_scores(scores, weak, tomo) 
+    lowScore_outcomes = filter_by_scores(weak, scores, threshold=0.1)
+
+    ## calcualte arrow of time
+    calculate_AoT(lowScore_outcomes, z0)
+##END main()
+
+
+def clean_data(raw_weak, raw_strong):
+    ## removes a few inconvenient features of data
+    
+    ## throw away last incomplete set of tomography
+    num = len(raw_weak)
+    global num_rotations 
+    num_extra = num%(num_rotations*3)
+    weak = raw_weak[:num-num_extra]
+    strong= raw_strong[:num-num_extra]
+
+    ## subtract mean
+    weak_mean = np.mean(weak)
+    strong_mean = np.mean(strong)
+    weak -= weak_mean
+    strong -= strong_mean
+
+    return weak, strong
+## clean_data
+
+
+def measurement_to_tomo(strong_measurement,threshold):
+    return  np.sign(strong_measurement-threshold)
+##END measurement_to_tomo
+
+
+def get_scores(weak):
+    ## score weak measurement outcomes based on accuracy of applied feedback
+
+    num_rotations = 27
+    feedback_angle_list = np.linspace(-np.pi/4, np.pi/4, num_rotations)
+    scores = np.zeros(len(weak))
+
+    x,z = util.theory_xz(weak)
+    traj_angle = np.arctan(z/x)
+    app_angle = np.tile(feedback_angle_list, len(weak)//num_rotations)
+    scores = abs(traj_angle-app_angle)/(np.pi/2)
+
+    return scores
+##END get_scores 
+
+
+def filter_by_scores(to_filter, criteria, threshold=0.1):
+    min_args = np.where(criteria < threshold)
+    return to_filter[min_args]
+##END filter_by_scores
+
+
+def calculate_AoT(weak_measurement, z0=0):
+    '''
+    DESCRIPTION: estimates arrow of time ratio infered from measurement outcomes
+    INPUT:  weak_measurement: filtered measurement values for all tomographic axes
+    OUTPUT: plot
+    '''
+
+    ground_val = -4 ## made up, supposed to be from pi/no pi calibration
+    excited_val = 4 
+    S = 0.41 # copied '' from "calibrate readout" ''
+    dV = 3.31 # copied '' from "calibrate readout" ''
+
+    ## forward probability
+    gnd_gauss = np.exp( -(weak_measurement - ground_val)**2 *S/2/dV )
+    ex_gauss = np.exp( -(weak_measurement - excited_val)**2 *S/2/dV )
+    for_log_prob = np.log( (1+z0)/2 *gnd_gauss  +  (1-z0)/2*ex_gauss )
+
+    ## backwards probability
+    gnd_gauss = np.exp( -(weak_measurement - ground_val)**2 *S/2/dV )
+    ex_gauss = np.exp( -(weak_measurement - excited_val)**2 *S/2/dV )
+    z_final = np.tanh(weak_measurement*S/dV/2) ## en leiu of slow function calls to theory_curves()
+    back_log_prob = np.log( (1+z_final)/2 *gnd_gauss  +  (1-z_final)/2*ex_gauss )
+
+    ## log ratio
+    Q = for_log_prob/back_log_prob
+
+    ## plots 
+    plt.hist(Q,bins=30)
+    plt.xlabel("Q")
+    plt.ylabel("Counts")
+    plt.xlim(-2,2)
+    plt.show()
+##END calculate_AoT
+
+
+if __name__ == '__main__':
+    main()
