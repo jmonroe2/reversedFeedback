@@ -24,7 +24,7 @@ def main():
         evaluate scores
         select on scores
         calculate probabilities
-        profit!!!
+        profit!
     '''
     ## load data
     data_dir = "../data/"
@@ -42,11 +42,19 @@ def main():
     #   calculate tomographic outcomes
     weak, strong = clean_data(weak_measurement,strong_measurement)
     #tests.find_readout_threshold(weak, strong) ## for checking above
-    readout_threshold = -1  ## from above
+    readout_threshold = -5  ## ignore above, make average of all tomography =0
     tomo = measurement_to_tomo(strong, readout_threshold)
     
+    a = np.linspace(-0.25, 0.25, 27)
+    aa = np.tile(a, 3) ## x,y,z rep of 27 angles
+    aaa = np.tile(aa, 500) ## 500 reps of experiment
+    tests.check_sequence_reading(aaa, 27)
+    tests.check_sequence_reading(tomo, 27)
+    #plt.ylabel("Applied rotation [$\pi$]")
+    #plt.xlabel("Sequence Step")
+    #tests.check_sequence_reading(aaa)
     ## select zero angle rotation and check readout tomography
-    tests.check_corrTomo(weak, tomo, z0)
+    #tests.check_corrTomo(weak, tomo, z0)
     return 0;
 
     ## evaluate feedback
@@ -56,6 +64,8 @@ def main():
 
     ## calcualte arrow of time
     calculate_AoT(lowScore_outcomes, z0)
+
+    return tomo
 ##END main()
 
 
@@ -66,8 +76,8 @@ def clean_data(raw_weak, raw_strong):
     num = len(raw_weak)
     global num_rotations 
     num_extra = num%(num_rotations*3)
-    weak = raw_weak[:num-num_extra]
-    strong= raw_strong[:num-num_extra]
+    weak = np.copy(raw_weak[:num-num_extra])
+    strong= np.copy(raw_strong[:num-num_extra])
 
     ## subtract mean
     weak_mean = np.mean(weak)
@@ -87,7 +97,7 @@ def measurement_to_tomo(strong_measurement,threshold):
 def get_scores(weak):
     ## score weak measurement outcomes based on accuracy of applied feedback
 
-    num_rotations = 27
+    global num_rotations
     feedback_angle_list = np.linspace(-np.pi/4, np.pi/4, num_rotations)
     scores = np.zeros(len(weak))
 

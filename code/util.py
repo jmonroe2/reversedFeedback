@@ -39,6 +39,9 @@ def correlate_tomography(to_bin, tomographic, bin_min=None, bin_max=None,num_bin
         tomo_inBin = tomographic[(left_bound < to_bin) & (to_bin<right_bound)]
         avg_tomo[bin_index] = np.mean(tomo_inBin)
         avg_tomo_err[bin_index] = binomial_error(tomo_inBin)
+    
+        binned = to_bin[(left_bound < to_bin) & (to_bin<right_bound)]
+        n = len(binned)
 
     ''' # more explicit version
     ## calculate average outcome for tomography in each bin

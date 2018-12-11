@@ -15,22 +15,8 @@ def find_readout_threshold(weak,strong):
     ## simply look at histogram
     fig, hist_ax = plt.subplots()
     hist_ax.hist(single_axis_strong,bins=100)
+    hist_ax.set_xlabel(r"Strong measurement outcome ($\theta_{app}=0$)")
   
-    '''  ## old code before thresholding was done by a separate function
-    ## sweep threshold to see what tomography contrast results
-    fig, thresh_ax = plt.subplots()
-    num_thresh = 50
-    max_thresh = 10
-    tomo_vs_thresh = np.zeros( (num_thresh,30) )
-
-    for i,threshold in enumerate(np.linspace(-10,10,num_thresh)):
-        coord, tomo, tomo_err = correlate_tomography(single_axis_weak, single_axis_strong, threshold)
-        tomo_vs_thresh[i] = tomo
-        
-    thresh_ax.imshow(tomo_vs_thresh, extent= [coord[0],coord[-1],-10,10], vmin=-1,vmax=1, cmap='bwr')
-    thresh_ax.set_xlabel("r")
-    thresh_ax.set_ylabel("Threshold value")
-    '''
     plt.show()
 ##END find_thresh 
 
@@ -48,8 +34,8 @@ def check_corrTomo(weak, tomo, z0=0.):
     #for i,label in enumerate("xyz"):
     if True:
     ## just look at z for now.
-        label = 'z' 
-        i=2 
+        i = 2
+        label = 'z'
         single_axis_weak = weak_zero_angle_xyz[i::3]
         single_axis_tomo = tomo_zero_angle_xyz[i::3]
 
@@ -57,14 +43,15 @@ def check_corrTomo(weak, tomo, z0=0.):
         all_tomo_dict[label] = bin_tomo
         all_tomoErr_dict[label] = bin_tomo_err
             
+        tomo_ax.errorbar(coord, bin_tomo, fmt='o', yerr=bin_tomo_err, label=label)
     x,z = util.theory_xz(coord, z0)
         
     #plt.plot(all_tomo_dict["x"], all_tomo_dict["z"], 'ok')
-    tomo_ax.errorbar(coord, bin_tomo, fmt='o', yerr=bin_tomo_err)
-    tomo_ax.plot(coord, z, label='Theory')
-    tomo_ax.legend(loc=2)
+    tomo_ax.plot(coord, z, label='Theory z')
+    #tomo_ax.plot(coord, -x, label='(-)Theory x')
+    tomo_ax.legend(loc=3)
     tomo_ax.set_xlabel("Record, $r$")
-    tomo_ax.set_ylabel("$<Z>$")
+    tomo_ax.set_ylabel("Average Value")
     tomo_ax.set_ylim(-1,1)
     plt.show()
         
@@ -90,3 +77,23 @@ def check_scores(scores, weak, tomo):
 ##END check_scores
 
 
+def check_sequence_reading(tomo, num_rotations):
+    #'''
+    shifted = np.copy(tomo)
+    num_repeats = len(tomo)//(num_rotations*3)
+    shifted.shape = num_rotations*3, num_repeats
+    plt.plot(np.mean(shifted,axis=1), 'ok')
+    #''' 
+
+    '''
+    num_repeats = len(tomo)//(num_rotations*3) 
+    bins = np.zeros(num_rotations) 
+    for i in range(3*num_rotations):
+        setOf_angle_tomo = tomo[i::81]
+        plt.plot(i, np.mean(setOf_angle_tomo), 'ok') 
+    #'''
+    plt.xlabel("Sequence step")
+    plt.ylabel("Average Tomography")
+    plt.ylim(-1,1)
+    plt.show()
+##END check_sequence_reading
