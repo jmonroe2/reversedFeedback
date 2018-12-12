@@ -13,7 +13,7 @@ import util
 import tests 
 
 global num_rotations
-num_rotations=27
+num_rotations=26
 
 def main():
     '''
@@ -36,25 +36,20 @@ def main():
         data_file = "fullData_prepZ,0.5_26Rot_-0.45,0.35Amp_5420Start_145nsInteg_f1.5_xyzTomo_p1"
         z0=1./np.sqrt(2)
     weak_measurement, strong_measurement = np.loadtxt(data_dir+data_file)
+    global num_rotations
 
     ## clean data
     #   trim to even number of trajectories per rotation
     #   calculate tomographic outcomes
     weak, strong = clean_data(weak_measurement,strong_measurement)
-    #tests.find_readout_threshold(weak, strong) ## for checking above
-    readout_threshold = -5  ## ignore above, make average of all tomography =0
+    #tests.find_readout_threshold(weak, strong) ## for checking conversion to tomo
+    readout_threshold = -2 ## from above histogram
+    #readout_threshold = -5 ## ignore above, make uncorrelated tomogrpahy average to zero
     tomo = measurement_to_tomo(strong, readout_threshold)
-    
-    a = np.linspace(-0.25, 0.25, 27)
-    aa = np.tile(a, 3) ## x,y,z rep of 27 angles
-    aaa = np.tile(aa, 500) ## 500 reps of experiment
-    tests.check_sequence_reading(aaa, 27)
-    tests.check_sequence_reading(tomo, 27)
-    #plt.ylabel("Applied rotation [$\pi$]")
-    #plt.xlabel("Sequence Step")
-    #tests.check_sequence_reading(aaa)
+    tests.check_sequence_reading(tomo, num_rotations)
+
     ## select zero angle rotation and check readout tomography
-    #tests.check_corrTomo(weak, tomo, z0)
+    tests.check_corrTomo(weak, tomo, z0)
     return 0;
 
     ## evaluate feedback
@@ -76,8 +71,10 @@ def clean_data(raw_weak, raw_strong):
     num = len(raw_weak)
     global num_rotations 
     num_extra = num%(num_rotations*3)
-    weak = np.copy(raw_weak[:num-num_extra])
-    strong= np.copy(raw_strong[:num-num_extra])
+    #weak = np.copy(raw_weak[:num-num_extra])
+    #strong= np.copy(raw_strong[:num-num_extra])
+    weak = np.copy(raw_weak)
+    strong = np.copy(raw_strong)
 
     ## subtract mean
     weak_mean = np.mean(weak)
@@ -90,7 +87,7 @@ def clean_data(raw_weak, raw_strong):
 
 
 def measurement_to_tomo(strong_measurement,threshold):
-    return  np.sign(strong_measurement-threshold)
+    return  np.sign(threshold-strong_measurement)
 ##END measurement_to_tomo
 
 

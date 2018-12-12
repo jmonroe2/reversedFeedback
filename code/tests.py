@@ -22,9 +22,10 @@ def find_readout_threshold(weak,strong):
 
 
 def check_corrTomo(weak, tomo, z0=0.):
-    num_rotations= 27
-    weak_zero_angle_xyz = weak[::num_rotations//2]
-    tomo_zero_angle_xyz = tomo[::num_rotations//2]
+    num_rotations= 26
+    d = -4
+    weak_zero_angle_xyz = weak[::num_rotations//2+d]
+    tomo_zero_angle_xyz = tomo[::num_rotations//2+d]
     
     ## x,y,z tomo
     all_tomo_dict = {"x":[], "y":[], "z":[]}
@@ -48,8 +49,8 @@ def check_corrTomo(weak, tomo, z0=0.):
         
     #plt.plot(all_tomo_dict["x"], all_tomo_dict["z"], 'ok')
     tomo_ax.plot(coord, z, label='Theory z')
-    #tomo_ax.plot(coord, -x, label='(-)Theory x')
-    tomo_ax.legend(loc=3)
+    #tomo_ax.plot(coord, x, label='Theory x')
+    tomo_ax.legend(loc=2)
     tomo_ax.set_xlabel("Record, $r$")
     tomo_ax.set_ylabel("Average Value")
     tomo_ax.set_ylim(-1,1)
@@ -78,18 +79,19 @@ def check_scores(scores, weak, tomo):
 
 
 def check_sequence_reading(tomo, num_rotations):
-    #'''
+    '''
     shifted = np.copy(tomo)
     num_repeats = len(tomo)//(num_rotations*3)
     shifted.shape = num_rotations*3, num_repeats
     plt.plot(np.mean(shifted,axis=1), 'ok')
     #''' 
 
-    '''
-    num_repeats = len(tomo)//(num_rotations*3) 
-    bins = np.zeros(num_rotations) 
-    for i in range(3*num_rotations):
-        setOf_angle_tomo = tomo[i::81]
+    #'''
+    #num_repeats = len(tomo)//(num_rotations*3) 
+    #bins = np.zeros(num_rotations) 
+    #tomo = tomo[:1000] ## cutoff most of the datea
+    for i in range(num_rotations*3):
+        setOf_angle_tomo = tomo[i::num_rotations*3]
         plt.plot(i, np.mean(setOf_angle_tomo), 'ok') 
     #'''
     plt.xlabel("Sequence step")
