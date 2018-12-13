@@ -43,7 +43,7 @@ def main():
     #   calculate tomographic outcomes
     weak, strong = clean_data(weak_measurement,strong_measurement)
     #tests.find_readout_threshold(weak, strong) ## for checking conversion to tomo
-    readout_threshold = -2 ## from above histogram
+    readout_threshold = 4 ## from above histogram
     #readout_threshold = -5 ## ignore above, make uncorrelated tomogrpahy average to zero
     tomo = measurement_to_tomo(strong, readout_threshold)
     tests.check_sequence_reading(tomo, num_rotations)

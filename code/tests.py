@@ -23,9 +23,8 @@ def find_readout_threshold(weak,strong):
 
 def check_corrTomo(weak, tomo, z0=0.):
     num_rotations= 26
-    d = -4
-    weak_zero_angle_xyz = weak[::num_rotations//2+d]
-    tomo_zero_angle_xyz = tomo[::num_rotations//2+d]
+    weak_zero_angle_xyz = weak[num_rotations//2::num_rotations]
+    tomo_zero_angle_xyz = tomo[num_rotations//2::num_rotations]
     
     ## x,y,z tomo
     all_tomo_dict = {"x":[], "y":[], "z":[]}
@@ -35,8 +34,8 @@ def check_corrTomo(weak, tomo, z0=0.):
     #for i,label in enumerate("xyz"):
     if True:
     ## just look at z for now.
-        i = 2
-        label = 'z'
+        i = 0
+        label = 'x'
         single_axis_weak = weak_zero_angle_xyz[i::3]
         single_axis_tomo = tomo_zero_angle_xyz[i::3]
 
@@ -48,8 +47,8 @@ def check_corrTomo(weak, tomo, z0=0.):
     x,z = util.theory_xz(coord, z0)
         
     #plt.plot(all_tomo_dict["x"], all_tomo_dict["z"], 'ok')
-    tomo_ax.plot(coord, z, label='Theory z')
-    #tomo_ax.plot(coord, x, label='Theory x')
+    #tomo_ax.plot(coord, z, label='Theory z')
+    tomo_ax.plot(coord, x, label='Theory x')
     tomo_ax.legend(loc=2)
     tomo_ax.set_xlabel("Record, $r$")
     tomo_ax.set_ylabel("Average Value")
