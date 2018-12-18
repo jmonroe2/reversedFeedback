@@ -17,9 +17,7 @@ num_rotations=26
 
 def main():
     '''
-    OUTLINE:
-        load data
-        correlate tomography
+    OUTLINE: load data correlate tomography
         make theory curves
         evaluate scores
         select on scores
@@ -43,24 +41,25 @@ def main():
     #   calculate tomographic outcomes
     weak, strong = clean_data(weak_measurement,strong_measurement)
     #tests.find_readout_threshold(weak, strong) ## for checking conversion to tomo
-    readout_threshold = 4 ## from above histogram
+    readout_threshold = 4 ## tuned to make corr tomo match
+    if not use_plusX_initial: readout_threshold = 6.5
     #readout_threshold = -5 ## ignore above, make uncorrelated tomogrpahy average to zero
     tomo = measurement_to_tomo(strong, readout_threshold)
-    tests.check_sequence_reading(tomo, num_rotations)
+    #tests.check_sequence_reading(tomo, num_rotations)
 
     ## select zero angle rotation and check readout tomography
-    tests.check_corrTomo(weak, tomo, z0)
-    return 0;
+    #tests.check_corrTomo(weak, tomo, z0, num_rotations)
 
     ## evaluate feedback
     scores = get_scores(weak)
-    #tests.check_scores(scores, weak, tomo) 
+    tests.check_scores_v2(scores, weak, tomo) 
     lowScore_outcomes = filter_by_scores(weak, scores, threshold=0.1)
+    return 0;
 
     ## calcualte arrow of time
     calculate_AoT(lowScore_outcomes, z0)
 
-    return tomo
+    return weak, tomo
 ##END main()
 
 
@@ -71,10 +70,8 @@ def clean_data(raw_weak, raw_strong):
     num = len(raw_weak)
     global num_rotations 
     num_extra = num%(num_rotations*3)
-    #weak = np.copy(raw_weak[:num-num_extra])
-    #strong= np.copy(raw_strong[:num-num_extra])
-    weak = np.copy(raw_weak)
-    strong = np.copy(raw_strong)
+    weak = np.copy(raw_weak[:-num_extra])
+    strong= np.copy(raw_strong[:-num_extra])
 
     ## subtract mean
     weak_mean = np.mean(weak)
@@ -100,10 +97,10 @@ def get_scores(weak):
 
     x,z = util.theory_xz(weak)
     traj_angle = np.arctan(z/x)
-    app_angle = np.tile(feedback_angle_list, len(weak)//num_rotations)
-    scores = abs(traj_angle-app_angle)/(np.pi/2)
+    app_angle = np.tile(feedback_angle_list, 3*len(weak)//(num_rotations*3))
+    #scores = abs(traj_angle-app_angle)/(np.pi/2)
 
-    return scores
+    return app_angle/np.pi
 ##END get_scores 
 
 
