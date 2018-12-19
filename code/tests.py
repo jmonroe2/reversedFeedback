@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
 import sys, os
 sys.path.append(os.getcwd())
 import util
@@ -19,6 +20,29 @@ def find_readout_threshold(weak,strong):
   
     plt.show()
 ##END find_thresh 
+
+
+def check_sequence_reading(tomo, num_rotations):
+    '''
+    shifted = np.copy(tomo)
+    num_repeats = len(tomo)//(num_rotations*3)
+    shifted.shape = num_rotations*3, num_repeats
+    plt.plot(np.mean(shifted,axis=1), 'ok')
+    #''' 
+
+    #'''
+    #num_repeats = len(tomo)//(num_rotations*3) 
+    #bins = np.zeros(num_rotations) 
+    #tomo = tomo[:1000] ## cutoff most of the datea
+    for i in range(num_rotations*3):
+        setOf_angle_tomo = tomo[i::num_rotations*3]
+        plt.plot(i, np.mean(setOf_angle_tomo), 'ok') 
+    #'''
+    plt.xlabel("Sequence step")
+    plt.ylabel("Average Tomography")
+    plt.ylim(-1,1)
+    plt.show()
+##END check_sequence_reading
 
 
 def check_corrTomo(weak, tomo, z0=0., num_rotations=26):
@@ -58,8 +82,8 @@ def check_corrTomo(weak, tomo, z0=0., num_rotations=26):
 ##END check_corrTomo
 
 
-def check_scores_v2(scores, weak, tomo,num_rotations=26):
-    ## don't look at score threshold, but make sure tomo matches the applied angle
+def check_scores_as_appliedAngle(scores, tomo,num_rotations=26):
+    ## with score set to the applied angle. Do we correctly index the rotated state
     fig, bloch = plt.subplots()
 
     ## get blocks of x or z tomography (all angles)
@@ -67,76 +91,81 @@ def check_scores_v2(scores, weak, tomo,num_rotations=26):
     intrablock_indices = np.arange(N)%(3*num_rotations)
     z_indices = intrablock_indices >= 2*num_rotations
     x_indices = intrablock_indices < num_rotations
-
-    ## with scores set to applied angle, separate tomographic average with applied angle
+    x_scores = scores[x_indices]
     z_scores = scores[z_indices]
+    x_tomo = tomo[x_indices]
     z_tomo = tomo[z_indices]
-    bins, score_tomo, score_tomo_err = util.correlate_tomography(z_scores, z_tomo, bin_min=-0.25,bin_max=0.25)
-    bloch.plot(bins, score_tomo, 'ok')
+
+    ## correlated tomography connects score values with average tomography
+    bins, binned_xTomo, binned_xTomo_err= util.correlate_tomography(x_scores, x_tomo, bin_min=-0.25,bin_max=0.25)
+    bins, binned_zTomo, binned_zTomo_err= util.correlate_tomography(z_scores, z_tomo, bin_min=-0.25,bin_max=0.25)
+
+    ## plots
+    plt.scatter(binned_xTomo, binned_zTomo,s=20, c=bins, cmap='nipy_spectral')
+    plt.colorbar(label=r"$\theta_{app}/\pi$")
+    util.make_bloch(bloch)
+
     bloch.set_ylim(-1,1)
 
     ## compare to expected rotation
-    r = 0.7 ## from zero-angle maximum x-coordinate
+    fig, rot_ax = plt.subplots()
+    using_plusX_init = True
+    if using_plusX_init:
+        r = 0.6 ## from zero-angle maximum x-coordinate
+        theta = 0
+    else:
+        r = 0.7
+        theta = np.pi/4
+        
     angles = bins
-    plt.plot( angles, r*np.sin(np.pi*angles))# - np.pi/4) )
+    rot_ax.errorbar( bins, binned_zTomo,yerr=binned_zTomo_err, color='k',fmt='o')
+    rot_ax.plot( angles, r*np.sin(np.pi*angles - theta))
+    rot_ax.set_xlabel("Applied Angle [$\pi$]")
+    rot_ax.set_ylabel("Z Tomo")
     plt.show()
+##END check_scores_as_appliedAngle
 
-##END check_scores_v2
 
-
-def check_scores(scores, weak, tomo):
-    fig, ax = plt.subplots()
+def check_scoreThreshold(scores, tomo, num_rotations=26):
     fig, bloch = plt.subplots()
-    for score_thresh in np.linspace(0.1,1.2, 12):
-        filtered_weak = weak[scores<score_thresh]
-        filtered_tomo = tomo[scores<score_thresh]
+    fig, ax = plt.subplots()
 
-        max_n = len(filtered_tomo) - len(filtered_tomo)%3
-        x_weak = filtered_weak[0:max_n:3]
-        z_weak = filtered_weak[2:max_n:3]
-        x_tomo = filtered_tomo[0:max_n:3]
-        z_tomo = filtered_tomo[2:max_n:3]
+    ## get blocks of x or z tomography (all angles, scores)
+    N = len(tomo)
+    intrablock_indices = np.arange(N)%(3*num_rotations)
+    z_indices = intrablock_indices >= 2*num_rotations
+    x_indices = intrablock_indices < num_rotations
+    x_scores = scores[x_indices]
+    z_scores = scores[z_indices]
+    x_tomo = tomo[x_indices]
+    z_tomo = tomo[z_indices]
+      
+    cmap = cm.get_cmap('Spectral')
+    #score_threshold = 0.6
+    score_min, score_max = 0.1,1.1
+    for score_threshold in np.linspace(score_min, score_max, 10):
+        filtered_z_tomo = z_tomo[ z_scores < score_threshold ]     
+        filtered_x_tomo = x_tomo[ x_scores < score_threshold ]     
+        filtered_z_scores = z_scores[ z_scores < score_threshold ]     
+        filtered_x_scores = x_scores[ x_scores < score_threshold ]     
 
-        bins, x_corrTomo,x_corrTomo_err =  util.correlate_tomography(x_weak, x_tomo)
-        bins, z_corrTomo ,z_corrTomo_err =  util.correlate_tomography(z_weak, z_tomo)
-        #ax.plot(score_thresh, max(z_corrTomo), 'ok')
-        #bloch.plot(x_tomo, z_tomo)
+        col = cmap((score_threshold-score_min)/(score_max-score_min))
+        ax.plot(score_threshold, np.mean(filtered_z_tomo), 'o', color=col)
+        ax.plot(score_threshold, np.mean(filtered_x_tomo), 'o', color=col)
 
-        avg_x = np.mean( x_tomo )
-        avg_z = np.mean( z_tomo )
-        err_x = util.binomial_error( x_tomo )
-        err_z = util.binomial_error( z_tomo )
-        ax.errorbar(score_thresh, avg_x, yerr=err_x, color='k',fmt='o')
-        #bloch.plot(avg_x, avg_z, 'ok')
-        bloch.plot(x_corrTomo, z_corrTomo, 'o', markeredgecolor=None)
+        ## at each score threshold, how does tomographic average distribute
+        bins, corrTomo_x, err = util.correlate_tomography(filtered_x_scores, filtered_x_tomo, bin_min=score_min, bin_max=score_max)
+        bins, corrTomo_z, err = util.correlate_tomography(filtered_z_scores, filtered_z_tomo, bin_min=score_min, bin_max=score_max)
+        r = score_threshold
+        bloch.plot( r*corrTomo_x, r*corrTomo_z, 'o', color=col)
+    
 
+    ax.set_xlabel("Score threshold", fontsize=20)
+    ax.set_ylabel("Avg Tomo", fontsize=20)
     util.make_bloch(bloch)
-    ax.set_xlabel("Score threshold")
-    ax.set_ylabel("Average X Tomography")
-    ax.set_ylim(-1,1)
-    #plt.ylim(-0.1,1.1)
+
     plt.show()
-##END check_scores
+
+##END check_scoreThreshold
 
 
-def check_sequence_reading(tomo, num_rotations):
-    '''
-    shifted = np.copy(tomo)
-    num_repeats = len(tomo)//(num_rotations*3)
-    shifted.shape = num_rotations*3, num_repeats
-    plt.plot(np.mean(shifted,axis=1), 'ok')
-    #''' 
-
-    #'''
-    #num_repeats = len(tomo)//(num_rotations*3) 
-    #bins = np.zeros(num_rotations) 
-    #tomo = tomo[:1000] ## cutoff most of the datea
-    for i in range(num_rotations*3):
-        setOf_angle_tomo = tomo[i::num_rotations*3]
-        plt.plot(i, np.mean(setOf_angle_tomo), 'ok') 
-    #'''
-    plt.xlabel("Sequence step")
-    plt.ylabel("Average Tomography")
-    plt.ylim(-1,1)
-    plt.show()
-##END check_sequence_reading

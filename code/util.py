@@ -50,28 +50,6 @@ def correlate_tomography(to_bin, tomographic, bin_min=None, bin_max=None,num_bin
         binned = to_bin[(left_bound < to_bin) & (to_bin<right_bound)]
         n = len(binned)
     if verbose: print(bin_xs)
-    ''' # more explicit version
-    ## calculate average outcome for tomography in each bin
-    tomo = np.zeros(num_bins)
-    tomo_err = np.zeros(num_bins)
-    sorted_toBin = np.sort(to_bin)
-    data_index = 0
-    #point = sorted_toBin[0]
-    readout = tomo[0]  
-    for bin_index, bin_thresh in enumerate(bin_xs):
-        for data_index, datum in enumerate(to_bin):
-            if bin_xs[bin_index-1] < datum < bin_thresh:
-                readout = tomographic[data_index]
-                tomo[bin_index] += np.sign(threshold - readout )
-        ##END loop through points belonging to bin
-        N = hist_values[bin_index]
-        tomo[bin_index] /= N
-        ## calculate 95% CI for binomial error
-        p = 0.5*tomo[bin_index] + 0.5 # convert from expectation value to probability
-        tomo_err[bin_index] = 1.96 *np.sqrt(p*(1-p)/N) /2
-        tomo_err[bin_index] *= 2 # convert back to expectation values.
-    ##END loop through bins
-    '''
     
     ## output
     return bin_edges, avg_tomo, avg_tomo_err
@@ -106,8 +84,8 @@ def make_bloch(axes_object):
     axes_object.set_xlim(-1,1)
     axes_object.set_ylim(-1,1)
 
-    axes_object.set_xlabel(r"$\langle X\rangle$")
-    axes_object.set_ylabel(r"$\langle Z\rangle$")
+    axes_object.set_xlabel(r"$\langle X\rangle$",fontsize=20)
+    axes_object.set_ylabel(r"$\langle Z\rangle$",fontsize=20)
 
     axes_object.set_aspect('equal')
 

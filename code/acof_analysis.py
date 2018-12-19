@@ -26,7 +26,7 @@ def main():
     '''
     ## load data
     data_dir = "../data/"
-    use_plusX_initial = True
+    use_plusX_initial = False
     if use_plusX_initial:
         data_file = "fullData_26Rot_-0.45,0.35Amp_5420Start_145nsInteg_f1.5_xyzTomo_p1"
         z0 = 0.
@@ -52,7 +52,9 @@ def main():
 
     ## evaluate feedback
     scores = get_scores(weak)
-    tests.check_scores_v2(scores, weak, tomo) 
+    #tests.check_scores_as_appliedAngle(scores, tomo) 
+    tests.check_scoreThreshold(scores, tomo)
+    
     lowScore_outcomes = filter_by_scores(weak, scores, threshold=0.1)
     return 0;
 
@@ -98,9 +100,13 @@ def get_scores(weak):
     x,z = util.theory_xz(weak)
     traj_angle = np.arctan(z/x)
     app_angle = np.tile(feedback_angle_list, 3*len(weak)//(num_rotations*3))
-    #scores = abs(traj_angle-app_angle)/(np.pi/2)
+    scores = abs(traj_angle-app_angle)/(np.pi/2)
 
-    return app_angle/np.pi
+    app_angle -= np.pi*0.1*np.random.randn(len(app_angle))
+    #return np.abs(app_angle/np.pi)
+    #return np.abs(app_angle/np.pi)
+    return scores
+      
 ##END get_scores 
 
 
