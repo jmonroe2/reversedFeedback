@@ -83,7 +83,7 @@ def check_corrTomo(weak, tomo, z0=0., num_rotations=26):
 
 
 def check_scores_as_appliedAngle(scores, tomo,num_rotations=26):
-    ## with score set to the applied angle. Do we correctly index the rotated state
+    ## with score set to the applied angle. Do we correctly index the rotated state?
     fig, bloch = plt.subplots()
 
     ## get blocks of x or z tomography (all angles)
@@ -129,7 +129,7 @@ def check_scores_as_appliedAngle(scores, tomo,num_rotations=26):
 def check_scoreThreshold(scores, tomo, num_rotations=26):
     fig, bloch = plt.subplots()
     fig, ax = plt.subplots()
-
+    
     ## get blocks of x or z tomography (all angles, scores)
     N = len(tomo)
     intrablock_indices = np.arange(N)%(3*num_rotations)
@@ -142,7 +142,7 @@ def check_scoreThreshold(scores, tomo, num_rotations=26):
       
     cmap = cm.get_cmap('Spectral')
     #score_threshold = 0.6
-    score_min, score_max = 0.1,1.1
+    score_min, score_max = 0.1, 1
     for score_threshold in np.linspace(score_min, score_max, 10):
         filtered_z_tomo = z_tomo[ z_scores < score_threshold ]     
         filtered_x_tomo = x_tomo[ x_scores < score_threshold ]     
@@ -156,8 +156,8 @@ def check_scoreThreshold(scores, tomo, num_rotations=26):
         ## at each score threshold, how does tomographic average distribute
         bins, corrTomo_x, err = util.correlate_tomography(filtered_x_scores, filtered_x_tomo, bin_min=score_min, bin_max=score_max)
         bins, corrTomo_z, err = util.correlate_tomography(filtered_z_scores, filtered_z_tomo, bin_min=score_min, bin_max=score_max)
-        r = score_threshold
-        bloch.plot( r*corrTomo_x, r*corrTomo_z, 'o', color=col)
+        r = (score_threshold-score_min) /(score_max-score_min)
+        bloch.plot( r*corrTomo_x, r*corrTomo_z, 'o', color=col, ms=3)
     
 
     ax.set_xlabel("Score threshold", fontsize=20)

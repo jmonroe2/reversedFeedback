@@ -26,7 +26,7 @@ def main():
     '''
     ## load data
     data_dir = "../data/"
-    use_plusX_initial = False
+    use_plusX_initial = True
     if use_plusX_initial:
         data_file = "fullData_26Rot_-0.45,0.35Amp_5420Start_145nsInteg_f1.5_xyzTomo_p1"
         z0 = 0.
@@ -53,13 +53,12 @@ def main():
     ## evaluate feedback
     scores = get_scores(weak)
     #tests.check_scores_as_appliedAngle(scores, tomo) 
-    tests.check_scoreThreshold(scores, tomo)
+    #tests.check_scoreThreshold(scores, tomo)
     
-    lowScore_outcomes = filter_by_scores(weak, scores, threshold=0.1)
-    return 0;
+    lowError_outcomes = filter_by_scores(weak, scores, threshold=0.1)
 
     ## calcualte arrow of time
-    calculate_AoT(lowScore_outcomes, z0)
+    calculate_AoT(lowError_outcomes, z0)
 
     return weak, tomo
 ##END main()
@@ -102,10 +101,12 @@ def get_scores(weak):
     app_angle = np.tile(feedback_angle_list, 3*len(weak)//(num_rotations*3))
     scores = abs(traj_angle-app_angle)/(np.pi/2)
 
-    app_angle -= np.pi*0.1*np.random.randn(len(app_angle))
-    #return np.abs(app_angle/np.pi)
-    #return np.abs(app_angle/np.pi)
     return scores
+
+    ## test cases for tests.check_scores_as_appliedAngle()
+    #app_angle[app_angle<0] = 2*np.pi
+    #return np.abs(app_angle/np.pi)
+    #return np.abs(traj_angle/np.pi)
       
 ##END get_scores 
 
@@ -124,7 +125,7 @@ def calculate_AoT(weak_measurement, z0=0):
     '''
 
     ground_val = -4 ## made up, supposed to be from pi/no pi calibration
-    excited_val = 4 
+    excited_val = 4
     S = 0.41 # copied '' from "calibrate readout" ''
     dV = 3.31 # copied '' from "calibrate readout" ''
 
@@ -140,13 +141,18 @@ def calculate_AoT(weak_measurement, z0=0):
     back_log_prob = np.log( (1+z_final)/2 *gnd_gauss  +  (1-z_final)/2*ex_gauss )
 
     ## log ratio
-    Q = for_log_prob/back_log_prob
+    Q = for_log_prob - back_log_prob
 
     ## plots 
-    plt.hist(Q,bins=30)
-    plt.xlabel("Q")
-    plt.ylabel("Counts")
-    plt.xlim(-2,2)
+    plt.hist(for_log_prob, bins=30, color='b', alpha=0.4, label='Forward')
+    plt.hist(back_log_prob, bins=30, color='r', alpha=0.4, label='Back')
+    plt.legend()
+
+    fig, q_hist_ax = plt.subplots() 
+    q_hist_ax.hist(Q,bins=30)
+    q_hist_ax.set_xlabel("Q", fontsize=20)
+    q_hist_ax.set_ylabel("Counts", fontsize=20)
+    q_hist_ax.set_xlim(-2,2)
     plt.show()
 ##END calculate_AoT
 
