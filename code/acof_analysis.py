@@ -37,13 +37,15 @@ def main():
     global num_rotations
 
     ## clean data
-    #   trim to even number of trajectories per rotation
-    #   calculate tomographic outcomes
+    #   trim to integer number of trajectories per rotation angle
+    #   substract mean
     weak, strong = clean_data(weak_measurement,strong_measurement)
-    #tests.find_readout_threshold(weak, strong) ## for checking conversion to tomo
+
+    ##  calculate tomographic outcomes
+    #tests.find_readout_threshold(weak, strong) 
     readout_threshold = 4 ## tuned to make corr tomo match
     if not use_plusX_initial: readout_threshold = 6.5
-    #readout_threshold = -5 ## ignore above, make uncorrelated tomogrpahy average to zero
+    #readout_threshold = -5 ## ignore above, make uncorrelated tomography average to zero
     tomo = measurement_to_tomo(strong, readout_threshold)
     #tests.check_sequence_reading(tomo, num_rotations)
 
@@ -102,7 +104,6 @@ def get_scores(weak):
     scores = abs(traj_angle-app_angle)/(np.pi/2)
 
     return scores
-
     ## test cases for tests.check_scores_as_appliedAngle()
     #app_angle[app_angle<0] = 2*np.pi
     #return np.abs(app_angle/np.pi)
@@ -124,10 +125,14 @@ def calculate_AoT(weak_measurement, z0=0):
     OUTPUT: plot
     '''
 
-    ground_val = -4 ## made up, supposed to be from pi/no pi calibration
-    excited_val = 4
-    S = 0.41 # copied '' from "calibrate readout" ''
-    dV = 3.31 # copied '' from "calibrate readout" ''
+    ## setting offsets:
+    ## used data from "acof_analysis_030218_noon.pxp" and 
+    ## compared mean of this data set (v3_gooder) to the mean of pi/no pi waves in the above Igor file
+    ## signs are made up
+    ground_val = 1.556
+    excited_val = -1.355
+    S = 0.41  # "copied '' from "calibrate readout" ''" <-- copied from util.theory_xz()
+    dV = 3.31 # "copied '' from "calibrate readout" ''" <-- copied from util.theory_xz()
 
     ## forward probability
     gnd_gauss = np.exp( -(weak_measurement - ground_val)**2 *S/2/dV )
@@ -135,27 +140,57 @@ def calculate_AoT(weak_measurement, z0=0):
     for_log_prob = np.log( (1+z0)/2 *gnd_gauss  +  (1-z0)/2*ex_gauss )
 
     ## backwards probability
-    gnd_gauss = np.exp( -(weak_measurement - ground_val)**2 *S/2/dV )
-    ex_gauss = np.exp( -(weak_measurement - excited_val)**2 *S/2/dV )
-    z_final = np.tanh(weak_measurement*S/dV/2) ## en leiu of slow function calls to theory_curves()
-    back_log_prob = np.log( (1+z_final)/2 *gnd_gauss  +  (1-z_final)/2*ex_gauss )
+    gnd_gauss2 = np.exp( -(-weak_measurement - ground_val)**2 *S/2/dV )
+    ex_gauss2 = np.exp( -(-weak_measurement - excited_val)**2 *S/2/dV )
+    x_final, z_final = util.theory_xz(weak_measurement)
+    # active transformation: flip coordiate of z
+    back_log_prob = np.log( (1+z_final)/2 *gnd_gauss2  +  (1-z_final)/2*ex_gauss2) 
 
     ## log ratio
     Q = for_log_prob - back_log_prob
+    hist_counts, hist_bins= np.histogram(Q, bins=30)
+    Q_analytic = get_analytic_q(hist_bins[1:],z0=0)
+    # I'll normalize on the second value so as to avoid the diverging terms
+    norm = hist_counts[0]
+    hist_counts = hist_counts/norm # true division error with division-assignment operator
+    hist_counts[0] = 1
 
     ## plots 
-    plt.hist(for_log_prob, bins=30, color='b', alpha=0.4, label='Forward')
-    plt.hist(back_log_prob, bins=30, color='r', alpha=0.4, label='Back')
-    plt.legend()
+    #plt.hist(for_log_prob, bins=30, color='b', alpha=0.4, label='Forward')
+    #plt.hist(back_log_prob, bins=30, color='r', alpha=0.4, label='Back')
+    #plt.legend()
 
     fig, q_hist_ax = plt.subplots() 
-    q_hist_ax.hist(Q,bins=30)
+    q_hist_ax.plot( hist_bins[1:], hist_counts,'r-')
+    q_hist_ax.plot( hist_bins[1:], Q_analytic,'k--')
+    #q_hist_ax.fill_between( hist_bins[1:], hist_counts,'r', alpha=0.3)
     q_hist_ax.set_xlabel("Q", fontsize=20)
     q_hist_ax.set_ylabel("Counts", fontsize=20)
     q_hist_ax.set_xlim(-2,2)
     plt.show()
 ##END calculate_AoT
 
+
+def get_analytic_q(qs, z0=0):
+    '''
+    DESCRIPTION: calculates Jordan Dressel's calculation (2017) of the arrow of time in QND measurement
+    INPUT: array of q values for which to calculate prob.
+            z0 !=0 is current not understood
+    OUTPUT: calculated probability density
+    '''
+    
+    tau = 0.13/1.97 # us^-1 ## guessing we can use PMH's value
+    T = .145 ## just a guess
+    tT = tau/T
+
+    ## three terms: P(Q) = norm *factor *exponential
+    norm = np.sqrt(tT/2/np.pi)
+    factor = np.sqrt( np.exp(2*qs) /(np.exp(qs)-1) )
+    exponent_arg = -0.5/tT - tT* (np.arccosh( np.exp(qs) ))**2
+    
+    return norm *factor *np.exp(exponent_arg)
+
+##END get_analytic_q
 
 if __name__ == '__main__':
     main()
