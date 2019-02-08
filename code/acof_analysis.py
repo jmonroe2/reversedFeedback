@@ -133,6 +133,8 @@ def calculate_AoT(weak_measurement, z0=0):
     excited_val = -1.355
     S = 0.41  # "copied '' from "calibrate readout" ''" <-- copied from util.theory_xz()
     dV = 3.31 # "copied '' from "calibrate readout" ''" <-- copied from util.theory_xz()
+    num_measurements = len(weak_measurement)
+    num_bins = 100
 
     ## forward probability
     gnd_gauss = np.exp( -(weak_measurement - ground_val)**2 *S/2/dV )
@@ -148,12 +150,9 @@ def calculate_AoT(weak_measurement, z0=0):
 
     ## log ratio
     Q = for_log_prob - back_log_prob
-    hist_counts, hist_bins= np.histogram(Q, bins=30)
+    hist_counts, hist_bins= np.histogram(Q, bins=num_bins)
     Q_analytic = get_analytic_q(hist_bins[1:],z0=0)
-    # I'll normalize on the second value so as to avoid the diverging terms
-    norm = hist_counts[0]
-    hist_counts = hist_counts/norm # true division error with division-assignment operator
-    hist_counts[0] = 1
+    #Q_analytic *= num_measurements # scale prob. to occurances
 
     ## plots 
     #plt.hist(for_log_prob, bins=30, color='b', alpha=0.4, label='Forward')
@@ -161,9 +160,10 @@ def calculate_AoT(weak_measurement, z0=0):
     #plt.legend()
 
     fig, q_hist_ax = plt.subplots() 
-    q_hist_ax.plot( hist_bins[1:], hist_counts,'r-')
-    q_hist_ax.plot( hist_bins[1:], Q_analytic,'k--')
-    #q_hist_ax.fill_between( hist_bins[1:], hist_counts,'r', alpha=0.3)
+    #q_hist_ax.semilogy( hist_bins[1:], hist_counts,'r-')
+    q_hist_ax.semilogy( hist_bins[1:], Q_analytic,'k--')
+    #@@@ WHY NOT NORMALIZED?
+    #q_hist_ax.fill_between( hist_bins[1:], hist_counts,color='r', alpha=0.3)
     q_hist_ax.set_xlabel("Q", fontsize=20)
     q_hist_ax.set_ylabel("Counts", fontsize=20)
     q_hist_ax.set_xlim(-2,2)
@@ -179,9 +179,11 @@ def get_analytic_q(qs, z0=0):
     OUTPUT: calculated probability density
     '''
     
-    tau = 0.13/1.97 # us^-1 ## guessing we can use PMH's value
-    T = .145 ## just a guess
-    tT = tau/T
+    #tau = 0.13/1.97 # us^-1 ## guessing we can use PMH's value
+    #T = .145 ## just a guess
+    #tT = tau/T
+    S = 0.41  
+    tT = 4*S ## according to Kater
 
     ## three terms: P(Q) = norm *factor *exponential
     norm = np.sqrt(tT/2/np.pi)
