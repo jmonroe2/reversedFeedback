@@ -187,9 +187,11 @@ def calculate_AoT(weak_measurement, z0=0):
 def get_analytic_q(weak,z0=0):
     S = 0.41  # see calc_AoT()
     dV = 3.31 # see calc_AoT()
+    tT = dV**2/S ## tau over T via equating Gaussian variance
 
-    return 2*np.log( np.cosh(weak/dV**2)) #+ z0*np.sinh(weak/dV**2))
+    #return 2*np.log( np.cosh(weak/dV**2)) #+ z0*np.sinh(weak/dV**2))
 ##END get_analytic_q
+
 
 def get_analytic_probQ(qs, z0=0):
     '''
@@ -213,23 +215,26 @@ def get_analytic_probQ(qs, z0=0):
 
 
 def check_probQ_theory_consistency():
-    qs = np.linspace(0.1,3, 100)
+    qs = np.linspace(0.1,0.3, 100)
 
     # find inverse gamma via Q
-    gamma = np.arccosh(np.exp(qs/2))
+    #gamma = np.arccosh(np.exp(qs/2))
+    gamma = np.linspace(0.1, 0.4, 100)
     zf = np.tanh(gamma)
 
     S = 0.41  # see calc_AoT()
     dV = 3.31 # see calc_AoT()
     tT = dV**2/S ## tau over T via equating Gaussian variance
-    s2 = tT
-    r = s2 *gamma
-    Pf = 0.5*( np.exp(-(r-1)**2/2/s2) + np.exp(-(r+1)**2/2/s2) )
-    Pf /= np.sqrt(2*np.pi*s2)
+    r = gamma *tT
+    Pf = 0.5*( np.exp(-(r-1)**2/2/tT) + np.exp(-(r+1)**2/2/tT) )
+    Pf /= np.sqrt(2*np.pi*tT)#*2 ## I had an extra factor of 2...
 
 
     lhs = Pf/2/zf
-    rhs = get_analytic_probQ(qs)
+    #rhs = get_analytic_probQ(qs)
+    #rhs = np.cosh(gamma)*np.exp(-0.5*tT -0.5/tT*gamma**2)\
+    rhs = 0.5 *(np.exp(-(tT*gamma-1)**2/2/tT) + np.exp(-(tT*gamma+1)**2/2/tT))\
+        /(2*np.tanh(gamma)*np.sqrt(2*np.pi*tT) )
     plt.plot(qs, lhs, 'k-')
     plt.plot(qs, rhs, 'r-')
     plt.xlabel("Q")
