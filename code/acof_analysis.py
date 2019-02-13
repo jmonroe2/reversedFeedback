@@ -129,8 +129,9 @@ def calculate_AoT(weak_measurement, z0=0):
     ## used data from "acof_analysis_030218_noon.pxp" and 
     ## compared mean of this data set (v3_gooder) to the mean of pi/no pi waves in the above Igor file
     ## signs are made up
-    ground_val = 1.556
+    #ground_val = 1.556
     #excited_val = -1.355
+    ground_val = 1.4 ## tuned to get close agreement between get_analytic_q() and data
     excited_val = -ground_val
     S = 0.41  # "copied '' from "calibrate readout" ''" <-- copied from util.theory_xz()
     dV = 3.31 # "copied '' from "calibrate readout" ''" <-- copied from util.theory_xz()
@@ -152,20 +153,25 @@ def calculate_AoT(weak_measurement, z0=0):
     ## log ratio
     Q = for_log_prob - back_log_prob
     hist_counts, hist_bins= np.histogram(Q, bins=num_bins)
+    # cf to a subset
+    weak_sample = weak_measurement[:1500]
+    Q_sample = Q[:1500]
+    sorting_indices = np.argsort(weak_sample)
+    weak_sample = weak_sample[sorting_indices]
+    Q_sample = Q_sample[sorting_indices]
+    # analytic results
+    Q_analytic = get_analytic_q(weak_sample ,z0=0)
     Q_analytic_prob  = get_analytic_probQ(hist_bins[1:],z0=0)
     Q_analytic_prob *= num_measurements # scale prob. to occurances
-    weak_sample = weak_measurement[:500]
-    Q_analytic = get_analytic_q(weak_sample ,z0=0)
-    ## plots 
-    #plt.hist(for_log_prob, bins=30, color='b', alpha=0.4, label='Forward')
-    #plt.hist(back_log_prob, bins=30, color='r', alpha=0.4, label='Back')
-    #plt.legend()
     
+    ## plots 
     fig, tmp_cf = plt.subplots()
-    plt.plot(weak_sample, Q[:500],'.k',label="data")
+    plt.plot(weak_sample, Q_sample,'.k',label="data")
     plt.plot(weak_sample, Q_analytic, 'r.',label="thy")
     plt.legend()
 
+    plt.show()
+    return 0;
     fig, q_hist_ax = plt.subplots() 
     q_hist_ax.semilogy( hist_bins[1:], hist_counts,'k-')
     q_hist_ax.semilogy( hist_bins[1:], Q_analytic_prob/30,'r--')
@@ -195,9 +201,7 @@ def get_analytic_probQ(qs, z0=0):
     
     S = 0.41  # see calc_AoT()
     dV = 3.31 # see calc_AoT()
-    tT = dV**2/S ## via equating Gaussian variance
-    #tT = 1
-    
+    tT = dV**2/S ## tau over T via equating Gaussian variance
 
     ## three terms: P(Q) = norm *factor *exponential
     norm = np.sqrt(tT/2/np.pi)
@@ -205,8 +209,37 @@ def get_analytic_probQ(qs, z0=0):
     exponent_arg = -0.5/tT - tT* (np.arccosh( np.exp(qs) ))**2
     
     return norm *factor *np.exp(exponent_arg)
-
 ##END get_analytic_q
 
+
+def check_probQ_theory_consistency():
+    qs = np.linspace(0.1,3, 100)
+
+    # find inverse gamma via Q
+    gamma = np.arccosh(np.exp(qs/2))
+    zf = np.tanh(gamma)
+
+    S = 0.41  # see calc_AoT()
+    dV = 3.31 # see calc_AoT()
+    tT = dV**2/S ## tau over T via equating Gaussian variance
+    s2 = tT
+    r = s2 *gamma
+    Pf = 0.5*( np.exp(-(r-1)**2/2/s2) + np.exp(-(r+1)**2/2/s2) )
+    Pf /= np.sqrt(2*np.pi*s2)
+
+
+    lhs = Pf/2/zf
+    rhs = get_analytic_probQ(qs)
+    plt.plot(qs, lhs, 'k-')
+    plt.plot(qs, rhs, 'r-')
+    plt.xlabel("Q")
+    plt.ylabel("P(Q)")
+    plt.show()
+
+##END check_probQ_theory_consistency
+
+
 if __name__ == '__main__':
-    main()
+    check_probQ_theory_consistency()
+
+    #main()
