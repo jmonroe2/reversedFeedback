@@ -178,6 +178,11 @@ def calculate_AoT(weak_measurement, z0=0):
     #plt.legend()
 
     fig, q_hist_ax = plt.subplots() 
+    q_hist_ax.plot(weak_sample, tmp_sample, 'k,')
+    q_hist_ax.plot(weak_sample, np.tanh(weak_sample*S/dV**2))
+    plt.show()
+    return 0;
+    
     #q_hist_ax.semilogy( hist_bins[1:], hist_counts,'k-')
     #q_hist_ax.semilogy( hist_bins[1:], Q_analytic_prob,'r--')
     q_hist_ax.plot( hist_bins[1:], Q_analytic_prob, 'r--')
