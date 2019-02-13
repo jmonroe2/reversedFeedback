@@ -165,7 +165,68 @@ def check_scoreThreshold(scores, tomo, num_rotations=26):
     util.make_bloch(bloch)
 
     plt.show()
-
 ##END check_scoreThreshold
+
+
+def check_probQ_theory_consistency(show=True):
+    qs = np.linspace(0.1,0.3, 100)
+
+    # find inverse gamma via Q
+    gamma = np.arccosh(np.exp(qs/2))
+    zf = np.tanh(gamma)
+
+    S = 0.41  # see calc_AoT()
+    dV = 3.31 # see calc_AoT()
+    tT = dV**2/S ## tau over T via equating Gaussian variance
+    r = gamma *tT
+    Pf = 0.5*( np.exp(-(r-1)**2/2/tT) + np.exp(-(r+1)**2/2/tT) )
+    Pf /= np.sqrt(2*np.pi/tT)#*2 ## I had an extra factor of 2...
+    lhs = Pf/2/zf
+    
+    
+    ## check other function's conversion
+    #equiv to rhs = get_analytic_probQ(qs)
+    arg = -0.5/tT -0.5*tT*(np.arccosh(np.exp(qs/2)))**2
+    zf_q = np.sqrt(np.exp(2*qs)/(np.exp(qs)-1))
+    norm = 0.5*np.sqrt(tT/2/np.pi) 
+    rhs = norm*zf_q*np.exp(arg)
+    
+    ## results from below insanity check
+    #rhs = np.cosh(gamma)*np.exp(-0.5/tT -0.5*tT*gamma**2)
+    #rhs /= 2np.tanh(gamma)*np.sqrt(2*np.pi*tT) 
+    
+    ## insanity check
+    #lhs = -(r-1)**2/2/tT
+    # check definition of r
+    #lhs = -(r-1)**2/2/tT
+    #rhs = -0.5*(tT*gamma-1)**2/tT 
+    # check expansion
+    #lhs = -(r-1)**2/2/tT
+    #rhs = -0.5*( (tT*gamma)**2 - 2*tT*gamma +1)/tT
+    # check simplification
+    #lhs = -(r-1)**2/2/tT
+    #rhs = -0.5*tT*gamma**2 +gamma -0.5/tT
+    # check exponentiation
+    #lhs = np.exp(-(r-1)**2/2/tT)
+    #rhs = np.exp(-0.5*tT*gamma**2 +gamma -0.5/tT)
+    # check double components
+    #lhs = np.exp(-(r-1)**2/2/tT) + np.exp(-(r+1)**2/2/tT)
+    #rhs = np.exp(-0.5*tT*gamma**2 +gamma -0.5/tT)
+    #rhs += np.exp(-0.5*tT*gamma**2 -gamma -0.5/tT)
+    # check factoring
+    #lhs = np.exp(-(r-1)**2/2/tT) + np.exp(-(r+1)**2/2/tT)
+    #rhs = (np.exp(gamma)+np.exp(-gamma))*np.exp(-0.5*tT*gamma**2 -0.5/tT) 
+    # check cosh equivalence
+    #lhs = 2*np.cosh(gamma)
+    #rhs = np.exp(gamma) + np.exp(-gamma)
+    #lhs = np.exp(-(r-1)**2/2/tT) + np.exp(-(r+1)**2/2/tT)
+    #rhs = np.cosh(gamma)*np.exp(-0.5*tT*gamma**2 -0.5/tT) 
+    
+    fig, ax = plt.subplots()
+    ax.plot(qs, lhs, 'k-')
+    ax.plot(qs, rhs, 'r-')
+    ax.set_title("check_probQ_theory_consistency()")
+    if show: plt.show()
+##END check_probQ_theory_consistency
 
 

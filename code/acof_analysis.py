@@ -153,29 +153,35 @@ def calculate_AoT(weak_measurement, z0=0):
     ## log ratio
     Q = for_log_prob - back_log_prob
     hist_counts, hist_bins= np.histogram(Q, bins=num_bins)
-    # cf to a subset
+    
+    #tmp = np.exp(for_log_prob)/np.sqrt(2*np.pi*S/dV**2)
+    tmp = z_final
+    
+    ## compare to analytic results
     weak_sample = weak_measurement[:1500]
+    tmp_sample = tmp[:1500]
     Q_sample = Q[:1500]
     sorting_indices = np.argsort(weak_sample)
     weak_sample = weak_sample[sorting_indices]
+    tmp_sample = tmp_sample[sorting_indices]
     Q_sample = Q_sample[sorting_indices]
-    # analytic results
+ 
     Q_analytic = get_analytic_q(weak_sample ,z0=0)
     Q_analytic_prob  = get_analytic_probQ(hist_bins[1:],z0=0)
-    Q_analytic_prob *= num_measurements # scale prob. to occurances
+    #Q_analytic_prob *= num_measurements # scale prob. to occurances
     
     ## plots 
-    fig, tmp_cf = plt.subplots()
-    plt.plot(weak_sample, Q_sample,'.k',label="data")
-    plt.plot(weak_sample, Q_analytic, 'r.',label="thy")
-    plt.legend()
+    # compare analytic Q to exp. Q
+    #fig, tmp_cf = plt.subplots()
+    #plt.plot(weak_sample, Q_sample,'.k',label="data")
+    #plt.plot(weak_sample, Q_analytic, 'r.',label="thy")
+    #plt.legend()
 
-    plt.show()
-    return 0;
     fig, q_hist_ax = plt.subplots() 
-    q_hist_ax.semilogy( hist_bins[1:], hist_counts,'k-')
-    q_hist_ax.semilogy( hist_bins[1:], Q_analytic_prob/30,'r--')
-    #@@@ WHY NOT NORMALIZED?
+    #q_hist_ax.semilogy( hist_bins[1:], hist_counts,'k-')
+    #q_hist_ax.semilogy( hist_bins[1:], Q_analytic_prob,'r--')
+    q_hist_ax.plot( hist_bins[1:], Q_analytic_prob, 'r--')
+    q_hist_ax.plot( Q_sample, tmp_sample, ',k')
     #q_hist_ax.fill_between( hist_bins[1:], hist_counts,color='r', alpha=0.3)
     q_hist_ax.set_xlabel("Q", fontsize=20)
     q_hist_ax.set_ylabel("Counts", fontsize=20)
@@ -189,14 +195,14 @@ def get_analytic_q(weak,z0=0):
     dV = 3.31 # see calc_AoT()
     tT = dV**2/S ## tau over T via equating Gaussian variance
 
-    #return 2*np.log( np.cosh(weak/dV**2)) #+ z0*np.sinh(weak/dV**2))
+    return 2*np.log( np.cosh(weak/dV**2)) #+ z0*np.sinh(weak/dV**2))
 ##END get_analytic_q
 
 
-def get_analytic_probQ(qs, z0=0):
+def get_analytic_probQ(Q, z0=0):
     '''
-    DESCRIPTION: calculates Jordan Dressel's calculation (2017) of the arrow of time in QND measurement
-    INPUT: array of q values for which to calculate prob.
+    DESCRIPTION: recreates Jordan Dressel's (2017) calculation of Q in QND measurement
+    INPUT: array of Q values for which to calculate probability
             z0 !=0 is current not understood
     OUTPUT: calculated probability density
     '''
@@ -204,47 +210,17 @@ def get_analytic_probQ(qs, z0=0):
     S = 0.41  # see calc_AoT()
     dV = 3.31 # see calc_AoT()
     tT = dV**2/S ## tau over T via equating Gaussian variance
-
-    ## three terms: P(Q) = norm *factor *exponential
-    norm = np.sqrt(tT/2/np.pi)
-    factor = np.sqrt( np.exp(2*qs) /(np.exp(qs)-1) )
-    exponent_arg = -0.5/tT - tT* (np.arccosh( np.exp(qs) ))**2
     
-    return norm *factor *np.exp(exponent_arg)
+    gamma_Q = np.arccosh(np.exp(Q/2))
+    zf_Q = np.sqrt(np.exp(Q)-1)/np.exp(Q) # includes cosh(gamma) factored from Gaussians
+    zf_Q = np.sqrt(np.exp(Q)-1)/np.exp(Q/2)
+    arg = -0.5/tT -0.5*tT*gamma_Q**2
+    pf_Q = np.sqrt(tT/2/np.pi)* np.exp(arg)
+   
+    return zf_Q
+    return pf_Q/2/zf_Q
 ##END get_analytic_q
 
 
-def check_probQ_theory_consistency():
-    qs = np.linspace(0.1,0.3, 100)
-
-    # find inverse gamma via Q
-    #gamma = np.arccosh(np.exp(qs/2))
-    gamma = np.linspace(0.1, 0.4, 100)
-    zf = np.tanh(gamma)
-
-    S = 0.41  # see calc_AoT()
-    dV = 3.31 # see calc_AoT()
-    tT = dV**2/S ## tau over T via equating Gaussian variance
-    r = gamma *tT
-    Pf = 0.5*( np.exp(-(r-1)**2/2/tT) + np.exp(-(r+1)**2/2/tT) )
-    Pf /= np.sqrt(2*np.pi*tT)#*2 ## I had an extra factor of 2...
-
-
-    lhs = Pf/2/zf
-    #rhs = get_analytic_probQ(qs)
-    #rhs = np.cosh(gamma)*np.exp(-0.5*tT -0.5/tT*gamma**2)\
-    rhs = 0.5 *(np.exp(-(tT*gamma-1)**2/2/tT) + np.exp(-(tT*gamma+1)**2/2/tT))\
-        /(2*np.tanh(gamma)*np.sqrt(2*np.pi*tT) )
-    plt.plot(qs, lhs, 'k-')
-    plt.plot(qs, rhs, 'r-')
-    plt.xlabel("Q")
-    plt.ylabel("P(Q)")
-    plt.show()
-
-##END check_probQ_theory_consistency
-
-
 if __name__ == '__main__':
-    check_probQ_theory_consistency()
-
-    #main()
+    main()
