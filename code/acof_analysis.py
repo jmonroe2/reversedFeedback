@@ -47,7 +47,7 @@ def main():
     if not use_plusX_initial: readout_threshold = 6.5
     #readout_threshold = -5 ## ignore above, make uncorrelated tomography average to zero
     tomo = measurement_to_tomo(strong, readout_threshold)
-    #tests.check_sequence_reading(tomo, num_rotations)
+    #tests.check_sequence_average(tomo, num_rotations)
 
     ## select zero angle rotation and check readout tomography
     #tests.check_corrTomo(weak, tomo, z0, num_rotations)
@@ -57,10 +57,11 @@ def main():
     #tests.check_scores_as_appliedAngle(scores, tomo) 
     #tests.check_scoreThreshold(scores, tomo)
     
-    lowError_outcomes = filter_by_scores(weak, scores, threshold=0.1)
+    lowError_weak_outcomes = filter_by_scores(weak, scores, threshold=0.1)
 
     ## calcualte arrow of time
-    calculate_AoT(lowError_outcomes, z0)
+    calculate_AoT(lowError_weak_outcomes, z0)
+    plt.show(); return 0;
 
     return weak, tomo
 ##END main()
@@ -77,10 +78,12 @@ def clean_data(raw_weak, raw_strong):
     strong= np.copy(raw_strong[:-num_extra])
 
     ## subtract mean
+    ##@ is substracting respective means valid?
     weak_mean = np.mean(weak)
     strong_mean = np.mean(strong)
     weak -= weak_mean
     strong -= strong_mean
+    # weak, strong means: -173.5, -175.8
 
     return weak, strong
 ## clean_data
@@ -133,74 +136,93 @@ def calculate_AoT(weak_measurement, z0=0):
     #excited_val = -1.355
     ground_val = 1.4 ## tuned to get close agreement between get_analytic_q() and data
     excited_val = -ground_val
-    S = 0.41  # "copied '' from "calibrate readout" ''" <-- copied from util.theory_xz()
-    dV = 3.31 # "copied '' from "calibrate readout" ''" <-- copied from util.theory_xz()
+    ## 04/04/19: starting over, these are from util.theory ##@@ delete after debugging
+    #S = 0.41  # "copied '' from "calibrate readout" ''" <-- copied from util.theory_xz()
+    #dV = 3.31 # "copied '' from "calibrate readout" ''" <-- copied from util.theory_xz()
+    # below: copied from util.make_theory (tuned to match correlated tomo)
+    S = 0.357
+    dV = 2.5
+    
     num_measurements = len(weak_measurement)
     num_bins = 100
+    sig2 = dV**2/S ## sigma squared
 
     ## forward probability
-    gnd_gauss = np.exp( -(weak_measurement - ground_val)**2 *S/2/dV )
-    ex_gauss = np.exp( -(weak_measurement - excited_val)**2 *S/2/dV )
+    # updated 04/04/19
+    #gnd_gauss = np.exp( -(weak_measurement - ground_val)**2 *S/2/dV )
+    #ex_gauss = np.exp( -(weak_measurement - excited_val)**2 *S/2/dV )
+    gnd_gauss = np.exp( -(weak_measurement - ground_val)**2 /2/sig2)
+    ex_gauss = np.exp( -(weak_measurement - excited_val)**2 /2/sig2)
+    
     for_log_prob = np.log( (1+z0)/2 *gnd_gauss  +  (1-z0)/2*ex_gauss )
 
     ## backwards probability
-    gnd_gauss2 = np.exp( -(-weak_measurement - ground_val)**2 *S/2/dV )
-    ex_gauss2 = np.exp( -(-weak_measurement - excited_val)**2 *S/2/dV )
+    #gnd_gauss2 = np.exp( -(-weak_measurement - ground_val)**2 *S/2/dV )
+    #ex_gauss2 = np.exp( -(-weak_measurement - excited_val)**2 *S/2/dV )
+    gnd_gauss_back = np.exp( -(-weak_measurement - ground_val)**2 /2/sig2)
+    ex_gauss_back = np.exp( -(-weak_measurement - excited_val)**2 /2/sig2)
+    
     x_final, z_final = util.theory_xz(weak_measurement)
-    # active transformation: flip coordiate of z
-    back_log_prob = np.log( (1+z_final)/2 *gnd_gauss2  +  (1-z_final)/2*ex_gauss2) 
+    gamma = weak_measurement/sig2*ground_val
+    #z_final = np.tanh(weak_measurement/sig2*ground_val) ##@ use above line instead; note scaling
+    z_final = np.tanh(gamma)
+    # active transformation: flip coordiate of z ##@ I think this is untrue
+    back_log_prob = np.log( (1+z_final)/2 *gnd_gauss_back +  (1-z_final)/2*ex_gauss_back)
 
     ## log ratio
     Q = for_log_prob - back_log_prob
+    ##@ rename these: they should be in "units" 
     hist_counts, hist_bins= np.histogram(Q, bins=num_bins)
     
-    #tmp = np.exp(for_log_prob)/np.sqrt(2*np.pi*S/dV**2)
-    tmp = z_final
     
     ## compare to analytic results
     weak_sample = weak_measurement[:1500]
-    tmp_sample = tmp[:1500]
+    gamma_sample = gamma[:1500]
+    z_sample = z_final[:1500]
+    pf_sample = np.exp(for_log_prob[:1500])
     Q_sample = Q[:1500]
-    sorting_indices = np.argsort(weak_sample)
-    weak_sample = weak_sample[sorting_indices]
-    tmp_sample = tmp_sample[sorting_indices]
-    Q_sample = Q_sample[sorting_indices]
  
-    Q_analytic = get_analytic_q(weak_sample ,z0=0)
+    Q_analytic = get_analytic_q(weak_sample*ground_val,z0=0) ##@ note the scaling
     Q_analytic_prob  = get_analytic_probQ(hist_bins[1:],z0=0)
     #Q_analytic_prob *= num_measurements # scale prob. to occurances
-    
-    ## plots 
+   
+    ################################################ 
+    ## plots
     # compare analytic Q to exp. Q
-    #fig, tmp_cf = plt.subplots()
-    #plt.plot(weak_sample, Q_sample,'.k',label="data")
-    #plt.plot(weak_sample, Q_analytic, 'r.',label="thy")
-    #plt.legend()
+    #'''
+    fig, tmp_cf = plt.subplots()
+    tmp_cf.plot(Q_sample, pf_sample, '.k', label="data")
+    tmp_cf.plot(hist_bins[1:], Q_analytic_prob, label='thy')
+    #tmp_cf.plot(Q_sample,z_sample,'.k',label="data")
+    #tmp_cf.plot(hist_bins[1:], Q_analytic_prob, 'r.',label="thy")
+    tmp_cf.set_xlabel("Q")
+    tmp_cf.set_ylabel("Z")
+    plt.legend()
+    return 0;
+    #'''
 
     fig, q_hist_ax = plt.subplots() 
-    q_hist_ax.plot(weak_sample, tmp_sample, 'k,')
-    q_hist_ax.plot(weak_sample, np.tanh(weak_sample*S/dV**2))
-    plt.show()
-    return 0;
-    
-    #q_hist_ax.semilogy( hist_bins[1:], hist_counts,'k-')
-    #q_hist_ax.semilogy( hist_bins[1:], Q_analytic_prob,'r--')
-    q_hist_ax.plot( hist_bins[1:], Q_analytic_prob, 'r--')
-    q_hist_ax.plot( Q_sample, tmp_sample, ',k')
+    q_hist_ax.semilogy( hist_bins[1:], hist_counts,'k-', label="Hist counts")
+    q_hist_ax.semilogy( hist_bins[1:], Q_analytic_prob,'r--', label="Analytic")
+    #q_hist_ax.plot( hist_bins[1:], Q_analytic_prob, 'r--')
+    #q_hist_ax.plot( Q_sample, tmp_sample, ',k')
     #q_hist_ax.fill_between( hist_bins[1:], hist_counts,color='r', alpha=0.3)
     q_hist_ax.set_xlabel("Q", fontsize=20)
     q_hist_ax.set_ylabel("Counts", fontsize=20)
     q_hist_ax.set_xlim(-2,2)
+    plt.legend()
     plt.show()
 ##END calculate_AoT
     
 
 def get_analytic_q(weak,z0=0):
-    S = 0.41  # see calc_AoT()
-    dV = 3.31 # see calc_AoT()
+    #S = 0.41  # see calc_AoT()
+    #dV = 3.31 # see calc_AoT()
+    S = 0.357 # from util. from theory
+    dV = 2.5
     tT = dV**2/S ## tau over T via equating Gaussian variance
 
-    return 2*np.log( np.cosh(weak/dV**2)) #+ z0*np.sinh(weak/dV**2))
+    return 2*np.log( np.cosh(weak/tT)) #+ z0*np.sinh(weak/dV**2))
 ##END get_analytic_q
 
 
@@ -211,18 +233,27 @@ def get_analytic_probQ(Q, z0=0):
             z0 !=0 is current not understood
     OUTPUT: calculated probability density
     '''
-    
-    S = 0.41  # see calc_AoT()
-    dV = 3.31 # see calc_AoT()
+   
+    # see calc_AoT() for values 
+    #S = 0.41  
+    #dV = 3.31 
+    S = 0.357 # from calc_
+    dV = 2.5
     tT = dV**2/S ## tau over T via equating Gaussian variance
-    
+
     gamma_Q = np.arccosh(np.exp(Q/2))
-    zf_Q = np.sqrt(np.exp(Q)-1)/np.exp(Q) # includes cosh(gamma) factored from Gaussians
-    zf_Q = np.sqrt(np.exp(Q)-1)/np.exp(Q/2)
+    # below not used but included for completeness
+    weak = gamma_Q*tT/1.4 # scale for ground state values
+
+    #zf_Q = np.sqrt(np.exp(Q)-1)/np.exp(Q) # includes cosh(gamma) factored from Gaussians
+    #zf_Q = np.sqrt(np.exp(Q)-1)/np.exp(Q/2) # not sure where this comes from...
+    ## additions: 04/05/19
+    zf_Q = np.tanh(gamma_Q) # Z(Q) = Z(g(Q)) = Z(g), g=gamma
+    ## end additions
     arg = -0.5/tT -0.5*tT*gamma_Q**2
     pf_Q = np.sqrt(tT/2/np.pi)* np.exp(arg)
+    return pf_Q
    
-    return zf_Q
     return pf_Q/2/zf_Q
 ##END get_analytic_q
 

@@ -4,12 +4,17 @@ def theory_xz(rs, z0=0):
     S = 0.41 # copied '' from "calibrate readout" ''
     dV = 3.31 # copied '' from "calibrate readout" ''
     gammaT = 0.45; # from a guess
+   
+    S = 0.357 # from p. 14 of "Debugging ACOF" physical notes
+    dV = 3.08 # ibid, change sign to match "debugging ACOF 07/02/18" document p. 14
+    # new guesses to tune theory to exp
+    S = 0.357
+    dV = 2.5 
 
-    ## new guesses to tune theory to exp
-    #S = 0.357 # from p. 14 of "Debugging ACOF" physical notes
-    #dV = 3.08 # ibid, change sign to match "debugging ACOF 07/02/18" document p. 14
-    
-    z = np.tanh(rs*S/2/dV - np.arctan(z0))
+    ## calculate
+    s2 = dV**2/S
+    z = np.tanh(rs /s2)
+    #z = np.tanh(rs*S/2/dV - np.arctan(z0))
     x = np.sqrt(1-z**2)*np.exp(-gammaT)
     return x,z    
 ##END theory_xz

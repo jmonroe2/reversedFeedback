@@ -22,26 +22,20 @@ def find_readout_threshold(weak,strong):
 ##END find_thresh 
 
 
-def check_sequence_reading(tomo, num_rotations):
+def check_sequence_average(tomo, num_rotations):
     '''
-    shifted = np.copy(tomo)
-    num_repeats = len(tomo)//(num_rotations*3)
-    shifted.shape = num_rotations*3, num_repeats
-    plt.plot(np.mean(shifted,axis=1), 'ok')
+    DESC: view reps of the full sequence: prep, (weak), rot. by 'feedback' angle, tomo; 
+            26 angles in x, 26 in y, 26 in z
     #''' 
 
-    #'''
-    #num_repeats = len(tomo)//(num_rotations*3) 
-    #bins = np.zeros(num_rotations) 
-    #tomo = tomo[:1000] ## cutoff most of the datea
+    fig, axes = plt.subplots()
     for i in range(num_rotations*3):
         setOf_angle_tomo = tomo[i::num_rotations*3]
         plt.plot(i, np.mean(setOf_angle_tomo), 'ok') 
-    #'''
-    plt.xlabel("Sequence step")
-    plt.ylabel("Average Tomography")
-    plt.ylim(-1,1)
-    plt.show()
+    axes.set_xlabel("Sequence step")
+    axes.set_ylabel("Average Tomography")
+    axes.set_ylim(-1,1)
+    axes.set_title("Check Sequence Averaging")
 ##END check_sequence_reading
 
 
@@ -75,6 +69,7 @@ def check_corrTomo(weak, tomo, z0=0., num_rotations=26):
     tomo_ax.legend(loc=4)
     tomo_ax.set_xlabel("Record, $r$")
     tomo_ax.set_ylabel("Average Value")
+    tomo_ax.set_title("Correleted Tomography")
     tomo_ax.set_ylim(-1,1)
     plt.show()
         
@@ -101,14 +96,15 @@ def check_scores_as_appliedAngle(scores, tomo,num_rotations=26):
     bins, binned_zTomo, binned_zTomo_err= util.correlate_tomography(z_scores, z_tomo, bin_min=-0.25,bin_max=0.25)
 
     ## plots
+    fig.sca(bloch)
     plt.scatter(binned_xTomo, binned_zTomo,s=20, c=bins, cmap='nipy_spectral')
     plt.colorbar(label=r"$\theta_{app}/\pi$")
     util.make_bloch(bloch)
 
     bloch.set_ylim(-1,1)
+    #bloch.set_title("Scores as Applied angle") ##@@ THIS GRAPH IS UNLABELED UNTIL THE FUNC IS CLEANED UP
 
     ## compare to expected rotation
-    fig, rot_ax = plt.subplots()
     using_plusX_init = True
     if using_plusX_init:
         r = 0.6 ## from zero-angle maximum x-coordinate
@@ -118,17 +114,19 @@ def check_scores_as_appliedAngle(scores, tomo,num_rotations=26):
         theta = np.pi/4
         
     angles = bins
+    fig, rot_ax = plt.subplots()
     rot_ax.errorbar( bins, binned_zTomo,yerr=binned_zTomo_err, color='k',fmt='o')
     rot_ax.plot( angles, r*np.sin(np.pi*angles - theta))
     rot_ax.set_xlabel("Applied Angle [$\pi$]")
     rot_ax.set_ylabel("Z Tomo")
-    plt.show()
 ##END check_scores_as_appliedAngle
 
 
 def check_scoreThreshold(scores, tomo, num_rotations=26):
-    fig, bloch = plt.subplots()
-    fig, ax = plt.subplots()
+    '''
+    '''
+    fig1, bloch = plt.subplots()
+    fig2, ax = plt.subplots()
     
     ## get blocks of x or z tomography (all angles, scores)
     N = len(tomo)
@@ -159,12 +157,12 @@ def check_scoreThreshold(scores, tomo, num_rotations=26):
         r = (score_threshold-score_min) /(score_max-score_min)
         bloch.plot( r*corrTomo_x, r*corrTomo_z, 'o', color=col, ms=3)
     
-
+   
     ax.set_xlabel("Score threshold", fontsize=20)
     ax.set_ylabel("Avg Tomo", fontsize=20)
     util.make_bloch(bloch)
-
-    plt.show()
+    bloch.set_title(f"Score Threshold {score_min}-{score_max}")
+    ax.set_title("Score Threshold")
 ##END check_scoreThreshold
 
 
