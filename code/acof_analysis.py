@@ -26,7 +26,7 @@ def main():
     '''
     ## load data
     data_dir = "../data/"
-    use_plusX_initial = True
+    use_plusX_initial = False
     if use_plusX_initial:
         data_file = "fullData_26Rot_-0.45,0.35Amp_5420Start_145nsInteg_f1.5_xyzTomo_p1"
         z0 = 0.
@@ -47,7 +47,7 @@ def main():
     if not use_plusX_initial: readout_threshold = 6.5
     #readout_threshold = -5 ## ignore above, make uncorrelated tomography average to zero
     tomo = measurement_to_tomo(strong, readout_threshold)
-    #tests.check_sequence_average(tomo, num_rotations)
+    tests.check_sequence_average(tomo, num_rotations)
 
     ## select zero angle rotation and check readout tomography
     #tests.check_corrTomo(weak, tomo, z0, num_rotations)
@@ -83,6 +83,7 @@ def clean_data(raw_weak, raw_strong):
     strong_mean = np.mean(strong)
     weak -= weak_mean
     strong -= strong_mean
+    print( "Weak shape", weak.shape )
     # weak, strong means: -173.5, -175.8
 
     return weak, strong
@@ -163,6 +164,14 @@ def calculate_AoT(weak_measurement, z0=0):
     z_final = ( np.sinh(gamma) + z0*np.cosh(gamma) ) /( np.cosh(gamma) + z0*np.sinh(gamma) )
     #z_final = np.tanh(weak_measurement/sig2*ground_val) ##@ use above line instead; note scaling
     back_log_prob = np.log( (1+z_final)/2 *gnd_gauss_back +  (1-z_final)/2*ex_gauss_back)
+
+    '''
+    ## added on 07/11/20
+    exp = np.exp(2*weak_measurement/sig2)
+    pg_final = exp/( exp-1 + 2./(1+z0) ) 
+    back_log_prob = np.log( pg_final *gnd_gauss_back + (1-pg_final)*ex_gauss_back )
+    '''
+
 
     ## log ratio
     Q = for_log_prob - back_log_prob
